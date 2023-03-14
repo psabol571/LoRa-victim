@@ -529,6 +529,7 @@ void initLmic(bit_t adrEnabled = 1,
     #endif
 }
 
+bool joined = false;
 
 #ifdef MCCI_LMIC 
 void onLmicEvent(void *pUserData, ev_t ev)
@@ -574,6 +575,7 @@ void onEvent(ev_t ev)
             // Cancel the next scheduled doWork job and re-schedule
             // for immediate execution to prevent that any uplink will
             // have to wait until the current doWork interval ends.
+            joined = true;
             os_clearCallback(&doWorkJob);
             os_setCallback(&doWorkJob, doWorkCallback);
             break;
@@ -624,6 +626,8 @@ void onEvent(ev_t ev)
     }
 }
 
+bool firstTime = true;
+const uint32_t firstJobWait = 30;
 
 static void doWorkCallback(osjob_t* job)
 {
@@ -641,6 +645,13 @@ static void doWorkCallback(osjob_t* job)
 
     // This job must explicitly reschedule itself for the next run.
     ostime_t startAt = timestamp + sec2osticks((int64_t)doWorkIntervalSeconds);
+
+
+    if(joined && firstTime) {
+        startAt = timestamp + sec2osticks((int64_t)firstJobWait);
+        firstTime = false;
+    }
+        
     os_setTimedCallback(&doWorkJob, startAt, doWorkCallback);    
 }
 
@@ -690,6 +701,31 @@ lmic_tx_error_t scheduleUplink(uint8_t fPort, uint8_t* data, uint8_t dataLength,
 //  █ █ ▀▀█ █▀▀ █▀▄   █   █ █ █ █ █▀▀   █▀▄ █▀▀ █ █  █  █ █
 //  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀   ▀▀▀ ▀▀▀ ▀▀  ▀▀▀   ▀▀  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀
 
+
+
+
+const uint32_t maxFcnt = 0xFFFFFFFF;
+uint32_t fcntIncrement = 65530; 
+uint32_t fcnt;
+
+void handleCounter(){
+    fcnt = LMIC_getSeqnoUp();
+
+    // if counter reached maximum, reset to 0 and slow down increment
+    if(fcnt == maxFcnt){
+        fcnt = 0;
+        fcntIncrement /= 10;
+    } else {
+        // increment counter, if overflow happened set it to (max - 1) 
+        // and next call of this function will handle maximum counter reached
+        fcnt += fcntIncrement;
+        if(fcnt < fcntIncrement){
+            fcnt = maxFcnt - 1;
+        }
+    }
+
+    LMIC_setSeqnoUp(fcnt);
+}
 
 static volatile uint16_t counter_ = 0;
 
@@ -770,6 +806,7 @@ void processWork(ostime_t doWorkJobTimeStamp)
             payloadBuffer[1] = counterValue & 0xFF;
             uint8_t payloadLength = 2;
 
+            handleCounter();
             scheduleUplink(fPort, payloadBuffer, payloadLength);
         }
     }
