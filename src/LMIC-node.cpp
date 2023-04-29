@@ -52,8 +52,6 @@
 
 #include "LMIC-node.h"
 
-DECLARE_LMIC;
-
 //  █ █ █▀▀ █▀▀ █▀▄   █▀▀ █▀█ █▀▄ █▀▀   █▀▄ █▀▀ █▀▀ ▀█▀ █▀█
 //  █ █ ▀▀█ █▀▀ █▀▄   █   █ █ █ █ █▀▀   █▀▄ █▀▀ █ █  █  █ █
 //  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀   ▀▀▀ ▀▀▀ ▀▀  ▀▀▀   ▀▀  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀
@@ -565,6 +563,7 @@ void onEvent(ev_t ev)
         case EV_TXCANCELED:
             setTxIndicatorsOn(false);
             printEvent(timestamp, ev);
+            printBytes(LMIC.frame, 255);
             break;               
 #endif
         case EV_JOINED:
@@ -572,6 +571,10 @@ void onEvent(ev_t ev)
             printEvent(timestamp, ev);
             printSessionKeys();
 
+            printBytes(LMIC.frame, 255);
+            Serial.print("freq: ");
+            Serial.println(LMIC.freq);
+            
             // Disable link check validation.
             // Link check validation is automatically enabled
             // during join, but because slow data rates change
@@ -595,6 +598,8 @@ void onEvent(ev_t ev)
             printFrameCounters();
 
             printBytes(LMIC.frame, 255);
+            Serial.print("freq: ");
+            Serial.println(LMIC.freq);
 
             // Check if downlink was received
             if (LMIC.dataLen != 0 || LMIC.dataBeg != 0)
@@ -712,56 +717,15 @@ lmic_tx_error_t scheduleUplink(uint8_t fPort, uint8_t* data, uint8_t dataLength,
 //  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀   ▀▀▀ ▀▀▀ ▀▀  ▀▀▀   ▀▀  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀
 
 
-// uint32_t incrementCounter = 65536;
-// uint32_t plusCounter = 0;
-// int countersLength = 6;
-// int indexCounter = 0;
-
-// uint32_t counters[100] = {
-//     9999,
-//     19999,
-//     29999,
-//     39999,
-//     49999,
-//     59999,
-// };
-
-// void handleCounter(){
-//     // increment FCnt faster (by around 10 000)
-//     LMIC_setSeqnoUp(counters[indexCounter++]);
-
-//     if(indexCounter >= countersLength) {
-//         indexCounter = 0;
-//         plusCounter += incrementCounter;
-//     }
-// }
-
-
-int countersLength = 6;
-int indexCounter = 0;
-
-uint32_t counters[100] = {
-    9999,
-    19999,
-    29999,
-    39999,
-    49999,
-    59999,
-};
-
-const uint32_t maxFcnt = 0xFFFFFFFF;
-uint32_t fcntIncrement = 65530; 
-uint32_t fcnt;
+const uint32_t maxFcnt = 0xFFFF;        //0xFFFFFFFF;
+uint32_t fcntIncrement = 999;           //21843; //65530; 
+uint32_t fcnt = 0;
 
 void handleCounter(){
     fcnt = LMIC_getSeqnoUp();
 
-    if(fcnt < counters[countersLength - 1]) {
-        fcnt = counters[indexCounter++];
-    }
-    else if(fcnt == maxFcnt){ // if counter reached maximum, reset to 0
+    if(fcnt == maxFcnt){ // if counter reached maximum, reset to 0
         fcnt = 0;
-        indexCounter = 0;
     } else {
         // increment counter, if overflow would happen set it to (max - 1) 
         // and next call of this function will handle maximum counter reached
