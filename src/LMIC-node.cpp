@@ -717,7 +717,7 @@ lmic_tx_error_t scheduleUplink(uint8_t fPort, uint8_t* data, uint8_t dataLength,
 //  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀   ▀▀▀ ▀▀▀ ▀▀  ▀▀▀   ▀▀  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀
 
 
-const uint32_t maxFcnt = 0xFFFF;        //0xFFFFFFFF;
+const uint32_t maxFcnt = 0xFFFFFFFF;        //0xFFFFFFFF;
 uint32_t fcntIncrement = 999;           //21843; //65530; 
 uint32_t fcnt = 0;
 
